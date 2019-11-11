@@ -1,3 +1,4 @@
+import com.acmerobotics.roadrunner.trajectory.TemporalMarker
 import javafx.animation.KeyFrame
 import javafx.animation.Timeline
 import javafx.application.Application
@@ -16,12 +17,14 @@ import javafx.stage.Stage
 import javafx.util.Duration
 
 class App : Application() {
-    val robotRect = Rectangle(100.0, 100.0, 10.0, 10.0)
-    val startRect = Rectangle(100.0, 100.0, 10.0, 10.0)
-    val endRect = Rectangle(100.0, 100.0, 10.0, 10.0)
+    val robotRect = Rectangle(100.0, 100.0, 18.0, 18.0)
+    val startRect = Rectangle(100.0, 100.0, 18.0, 18.0)
+    val endRect = Rectangle(100.0, 100.0, 18.0, 18.0)
 
     var startTime = Double.NaN
     val trajectory = TrajectoryGen.createTrajectory()
+
+    private var remainingMarkers = mutableListOf<TemporalMarker>()
 
     lateinit var fieldImage: Image
     lateinit var stage: Stage
@@ -58,10 +61,18 @@ class App : Application() {
         stage.title = "PathVisualizer"
         stage.isResizable = false
 
+        resetMarkers()
+
         println("duration ${trajectory.duration()}")
 
         stage.show()
         t1.play()
+    }
+
+    fun resetMarkers() {
+        remainingMarkers.clear();
+        remainingMarkers.addAll(trajectory.markers);
+        remainingMarkers.sortBy {it.time};
     }
 
     fun run(gc: GraphicsContext) {
@@ -86,8 +97,14 @@ class App : Application() {
         val end = trajectory.end()
         val current = trajectory[profileTime]
 
+        while (remainingMarkers.size > 0 && (time-startTime) > remainingMarkers[0].time) {
+            remainingMarkers.removeAt(0).callback()
+        }
+
+
         if (profileTime >= duration)
             startTime = time
+            resetMarkers()
 
         GraphicsUtil.drawSampledPath(trajectory.path)
 
